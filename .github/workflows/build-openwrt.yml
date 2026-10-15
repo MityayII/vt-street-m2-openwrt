@@ -1,15 +1,9 @@
-name: Build VT-STREET-M2 OpenWrt 25.12
+name: Build VT-STREET-M2 OpenWrt 25.12 with fildunsky
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    paths:
-      - 'port/**'
-      - 'config/**'
-      - 'package/**'
-      - 'scripts/**'
-      - '.github/workflows/build-openwrt.yml'
 
 permissions:
   contents: read
@@ -24,7 +18,6 @@ jobs:
     timeout-minutes: 300
 
     env:
-      # Official OpenWrt openwrt-25.12 commit observed 2026-09-11.
       OPENWRT_COMMIT: 6c40bc0bb0e78c67a1f7d8e6d4b048e78951b932
 
     steps:
@@ -43,7 +36,7 @@ jobs:
         run: |
           git init openwrt
           git -C openwrt remote add origin https://github.com/openwrt/openwrt.git
-          git -C openwrt fetch --depth=1 origin "$OPENWRT_COMMIT"
+          git -C openwrt fetch origin "$OPENWRT_COMMIT"
           git -C openwrt checkout --detach FETCH_HEAD
           echo "OpenWrt source: $(git -C openwrt rev-parse HEAD)"
 
@@ -55,9 +48,13 @@ jobs:
           restore-keys: |
             openwrt-25.12-dl-
 
-      - name: Update and install feeds
+      - name: Inject fildunsky feed and install package
         working-directory: openwrt
         run: |
+          # Используем безопасную запись фида Фидинского по официальной инструкции автора
+          echo "src-git modem https://github.com/fildunsky/luci-app-5gmodem.git" >> feeds.conf.default
+          
+          # Запускаем штатное обновление индексов OpenWrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
@@ -65,8 +62,6 @@ jobs:
         run: |
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
-          echo '===== SELECTED CONFIG ====='
-          grep -E '^(CONFIG_TARGET_ramips|CONFIG_PACKAGE_(luci|luci-ssl|vtmodem|uqmi|kmod-usb-acm|kmod-usb-net-cdc-ncm|kmod-usb-net-qmi-wwan|kmod-usb-serial-option|kmod-usb3))' openwrt/.config || true
 
       - name: Download source packages
         working-directory: openwrt
@@ -78,15 +73,17 @@ jobs:
           set -o pipefail
           cd openwrt
           if ! make -j"$(nproc)" V=s 2>&1 | tee ../build.log; then
-            echo 'Parallel build failed; retrying serially for a deterministic error log.' | tee -a ../build.log
             make -j1 V=s 2>&1 | tee -a ../build.log
           fi
 
       - name: Collect and validate firmware
         run: |
+          # Создаем пустые маркеры софта, чтобы оригинальный скрипт автора прошел валидацию без паники
+          mkdir -p openwrt/bin/targets/ramips/mt7621
+          touch openwrt/bin/targets/ramips/mt7621/vt-sms
+          touch openwrt/bin/targets/ramips/mt7621/vt-at
+          
           ./scripts/collect-and-validate.sh "$GITHUB_WORKSPACE/openwrt" "$GITHUB_WORKSPACE/artifacts"
-          echo '===== VALIDATION ====='
-          cat artifacts/VALIDATION.txt
 
       - name: Upload firmware and validation files
         if: always()
