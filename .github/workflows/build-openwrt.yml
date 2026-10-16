@@ -63,6 +63,30 @@ jobs:
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
+          # ЧИСТАЯ АВТОНАСТРОЙКА СИСТЕМЫ (ЯЗЫК, ВРЕМЯ МСК, ОЧИСТКА РЕПОЗИТОРИЕВ)
+          mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
+          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
+          #!/bin/sh
+          
+          # 1. ЛОКАЛИЗАЦИЯ: Включаем русский язык для LuCI по умолчанию
+          uci set luci.main.lang='ru'
+          uci commit luci
+
+          # 2. ЧАСОВОЙ ПОЯС: Жестко выставляем Московское время (МСК)
+          uci set system.@system.timezone='MSK-3'
+          uci set system.@system.zonename='Europe/Moscow'
+          uci commit system
+
+          # 3. ИДЕАЛЬНЫЙ APK UPDATE: Вырезаем упоминание внешней папки modem
+          if [ -f /etc/apk/repositories ]; then
+              sed -i '/\/modem/d' /etc/apk/repositories
+          fi
+          
+          exit 0
+          EOF
+          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
+
+
       - name: Download source packages
         working-directory: openwrt
         run: make download -j8
