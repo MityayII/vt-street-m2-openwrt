@@ -1,4 +1,4 @@
-name: Build VT-STREET-M2 OpenWrt 25.12 with fildunsky
+name: Build VT-STREET-M2 OpenWrt 25.12.5 Stable Release
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 300
 
     env:
-      OPENWRT_COMMIT: 6c40bc0bb0e78c67a1f7d8e6d4b048e78951b932
+      OPENWRT_TAG: v25.12.5
 
     steps:
       - name: Checkout VT-STREET-M2 port
@@ -32,19 +32,19 @@ jobs:
             libncurses-dev libssl-dev python3 python3-setuptools python3-pyelftools \
             rsync swig unzip zlib1g-dev file wget curl time xsltproc ca-certificates
 
-      - name: Fetch pinned OpenWrt 25.12 source
+      - name: Fetch OpenWrt Stable Release Tag
         run: |
           git init openwrt
           git -C openwrt remote add origin https://github.com/openwrt/openwrt.git
-          git -C openwrt fetch origin "$OPENWRT_COMMIT"
-          git -C openwrt checkout --detach FETCH_HEAD
-          echo "OpenWrt source: $(git -C openwrt rev-parse HEAD)"
+          git -C openwrt fetch origin refs/tags/$OPENWRT_TAG:refs/tags/$OPENWRT_TAG
+          git -C openwrt checkout tags/$OPENWRT_TAG
+          echo "OpenWrt source release: $(git -C openwrt rev-parse HEAD)"
 
       - name: Cache OpenWrt downloads
         uses: actions/cache@v4
         with:
           path: openwrt/dl
-          key: openwrt-25.12-dl-${{ env.OPENWRT_COMMIT }}
+          key: openwrt-25.12.5-release-dl-${{ env.OPENWRT_TAG }}
           restore-keys: |
             openwrt-25.12-dl-
 
@@ -89,7 +89,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vt-street-m2-openwrt-${{ github.run_number }}
+          name: vt-street-m2-openwrt-v25.12.5-release
           if-no-files-found: warn
           retention-days: 30
           path: |
