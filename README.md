@@ -7,7 +7,7 @@ Hardware baseline:
 - 128 MiB NAND, 128 MiB RAM
 - MT7530 switch, one exposed Ethernet port (`lan1`)
 - M.2 modem over USB
-- tested hardware variants: Fibocom L860-GL-16 and Dell/Foxconn T99W175
+- tested hardware variants: Fibocom FM350-GL and Dell/Foxconn T99W175
 
 Current bring-up scope:
 - board DTS
@@ -19,15 +19,9 @@ Current bring-up scope:
 - USB power GPIO5
 - SIM select GPIO16
 - SIM variant GPIO3 as input
-- USB drivers for CDC-ACM/CDC-NCM and QMI/option
-- LuCI and basic diagnostic tools
 
-Not included yet:
-- ModemExpert
-- custom `vt-modem-core`
-- L860/T99 modem backends
-- `luci-app-vtmodem`
-- SMS backend
+
+
 
 The first build is based on the official OpenWrt `openwrt-25.12` branch, pinned in CI to a known commit for reproducibility.
 
