@@ -7,8 +7,7 @@ Hardware baseline:
 - 128 MiB NAND, 128 MiB RAM
 - MT7530 switch, one exposed Ethernet port (`lan1`)
 - M.2 modem over USB
-- tested hardware variants: Fibocom FM350-GL and Dell/Foxconn T99W175
-
+- tested hardware variants: Fibocom FM350-GL
 Current bring-up scope:
 - board DTS
 - exact NAND partition layout from the running vendor firmware
