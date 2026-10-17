@@ -72,20 +72,19 @@ jobs:
           uci set luci.main.lang='ru'
           uci commit luci
           
-          # 2. ЧАСОВОЙ ПОЯС: Корректно находим системную секцию и зашиваем Московское время (МСК)
-          SYS_SECTION=$(uci show system | grep -m1 "=system" | cut -d. -f2 | cut -d= -f1)
-          if [ -n "$SYS_SECTION" ]; then
-              uci set system."$SYS_SECTION".timezone='MSK-3'
-              uci set system."$SYS_SECTION".zonename='Europe/Moscow'
-              uci commit system
-          fi
+          # 2. ЧАСОВОЙ ПОЯС: Напрямую прописываем Московское время (МСК) в системную секцию новой структуры
+          uci set system.system.timezone='MSK-3'
+          uci set system.system.zonename='Europe/Moscow'
+          uci commit system
 
           # 3. ЧИНИМ APK UPDATE: Вырезаем битую внешнюю строку /modem из правильного файла distfeeds.list
-          TARGET_REPOS="/etc/apk/repositories.d/distfeeds.list"
-          if [ -f "$TARGET_REPOS" ]; then
-              sed -i '/\/modem/d' "$TARGET_REPOS"
-          fi
-          
+          (
+              while [ ! -f /etc/apk/repositories.d/distfeeds.list ]; do
+                  sleep 1
+              done
+              sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
+          ) &
+
           exit 0
           EOF
           chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
