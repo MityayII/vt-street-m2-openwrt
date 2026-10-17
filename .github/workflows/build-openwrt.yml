@@ -63,7 +63,7 @@ jobs:
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # ЧИСТАЯ АВТОНАСТРОЙКА СИСТЕМЫ (ЯЗЫК, ВРЕМЯ МСК, ОЧИСТКА РЕПОЗИТОРИЕВ)
+          # ЧИСТАЯ АВТОНАСТРОЙКА СИСТЕМЫ И ИСПРАВЛЕНИЕ APK REPOSITORIES
           mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
           cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
           #!/bin/sh
@@ -72,18 +72,15 @@ jobs:
           uci set luci.main.lang='ru'
           uci commit luci
           
-          # 2. ЧАСОВОЙ ПОЯС: Напрямую прописываем Московское время (МСК) в системную секцию новой структуры
-          uci set system.system.timezone='MSK-3'
+          # 2. ЧАСОВОЙ ПОЯС: Корректный POSIX-формат для Московского времени в OpenWrt 25.12
+          uci set system.system.timezone='MSK-3MSD,M3.5.0,M10.5.0/3'
           uci set system.system.zonename='Europe/Moscow'
           uci commit system
 
-          # 3. ЧИНИМ APK UPDATE: Вырезаем битую внешнюю строку /modem из правильного файла distfeeds.list
-          (
-              while [ ! -f /etc/apk/repositories.d/distfeeds.list ]; do
-                  sleep 1
-              done
+          # 3. ИСПРАВЛЕНИЕ APK UPDATE: Безопасное удаление битого внешнего репозитория.
+          if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
               sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
-          ) &
+          fi
 
           exit 0
           EOF
