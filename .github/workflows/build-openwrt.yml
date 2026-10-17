@@ -63,29 +63,42 @@ jobs:
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # ЧИСТАЯ АВТОНАСТРОЙКА СИСТЕМЫ И ИСПРАВЛЕНИЕ APK REPOSITORIES
+          # 1. АВТОНАСТРОЙКА UCI (ЯЗЫК И ПРОВЕРЕННОЕ НА ЖЕЛЕЗЕ ВРЕМЯ)
           mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
           cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
           #!/bin/sh
           
-          # 1. ЛОКАЛИЗАЦИЯ: Включаем русский язык для LuCI по умолчанию
+          # Включаем русский язык для LuCI по умолчанию
           uci set luci.main.lang='ru'
           uci commit luci
           
-          # 2. ЧАСОВОЙ ПОЯС: Корректный POSIX-формат для Московского времени в OpenWrt 25.12
-          uci set system.system.timezone='MSK-3MSD,M3.5.0,M10.5.0/3'
-          uci set system.system.zonename='Europe/Moscow'
+          # Проверенный вами лично универсальный синтаксис часового пояса
+          uci set system.@system[0].zonename='Europe/Moscow'
+          uci set system.@system[0].timezone='MSK-3'
           uci commit system
-
-          # 3. ИСПРАВЛЕНИЕ APK UPDATE: Безопасное удаление битого внешнего репозитория.
-          if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
-              sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
-          fi
+          
+          # Принудительный перезапуск системного сервиса, переводящий терминал на MSK
+          /etc/init.d/system restart
 
           exit 0
           EOF
           chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
 
+          # 2. АВТОМАТИЧЕСКИЙ ЗАПУСК ТВОЕЙ КОМАНДЫ СЕД ПРИ ЗАГРУЗКЕ РОУТЕРА
+          # Создаем сервис позднего старта (START=99), который выполнит команду sed,
+          # когда файлы APK уже гарантированно созданы системой и лежат на диске.
+          mkdir -p openwrt/package/base-files/image-config/files/etc/init.d
+          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/init.d/99-apk-fix
+          #!/bin/sh /etc/rc.common
+          START=99
+          boot() {
+              if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
+                  sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
+              fi
+          }
+          EOF
+          chmod +x openwrt/package/base-files/image-config/files/etc/init.d/99-apk-fix
+          
       - name: Download source packages
         working-directory: openwrt
         run: make download -j8
