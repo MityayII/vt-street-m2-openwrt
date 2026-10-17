@@ -89,7 +89,6 @@ jobs:
           EOF
           chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
 
-
       - name: Download source packages
         working-directory: openwrt
         run: make download -j8
