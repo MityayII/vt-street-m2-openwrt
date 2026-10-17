@@ -1,5 +1,5 @@
 #!/bin/sh
-
+exit 0
 TAG="t99w175-hotplug"
 LOCKDIR="/tmp/t99w175-hotplug.lock"
 READYFILE="/tmp/t99w175-hotplug.ready"
