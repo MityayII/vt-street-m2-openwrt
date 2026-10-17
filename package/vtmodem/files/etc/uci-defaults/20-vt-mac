@@ -27,16 +27,8 @@ factory_valid()
 
 find_t99_serial()
 {
-	local d
-	for d in /sys/bus/usb/devices/*; do
-		[ -f "$d/idVendor" ] || continue
-		[ -f "$d/idProduct" ] || continue
-		[ "$(cat "$d/idVendor" 2>/dev/null)" = "05c6" ] || continue
-		[ "$(cat "$d/idProduct" 2>/dev/null)" = "9025" ] || continue
-		cat "$d/serial" 2>/dev/null
-		return 0
-	done
-	return 1
+	cat /proc/sys/kernel/random/boot_id 2>/dev/null
+	return 0
 }
 
 derive_mac()
