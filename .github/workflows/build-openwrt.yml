@@ -57,48 +57,37 @@ jobs:
           # Запускаем штатное обновление индексов OpenWrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-
       - name: Apply VT-STREET-M2 board port
         run: |
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # 1. АВТОНАСТРОЙКА UCI (ЯЗЫК И ПРОВЕРЕННОЕ НА ЖЕЛЕЗЕ ВРЕМЯ)
+          # СОЗДАНИЕ СКРИПТА ПЕРВООЧЕРЕДНОЙ НАСТРОЙКИ (ВЫПОЛНЯЕТСЯ ПЕРВЫМ ИЗ ВСЕХ)
           mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
-          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
+          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/00-initial-setup
           #!/bin/sh
           
-          # Включаем русский язык для LuCI по умолчанию
+          # 1. ЛОКАЛИЗАЦИЯ: Включаем русский язык для LuCI по умолчанию
           uci set luci.main.lang='ru'
           uci commit luci
           
-          # Проверенный вами лично универсальный синтаксис часового пояса
+          # 2. ЧАСОВОЙ ПОЯС: Установка московского времени (MSK)
           uci set system.@system[0].zonename='Europe/Moscow'
           uci set system.@system[0].timezone='MSK-3'
           uci commit system
           
-          # Принудительный перезапуск системного сервиса, переводящий терминал на MSK
+          # 3. ИСПРАВЛЕНИЕ APK UPDATE: Вырезаем битый фид /modem до того, как его прочитает пакетный менеджер
+          if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
+              sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
+          fi
+
+          # Принудительный перезапуск системных сервисов для мгновенного перевода часов
           /etc/init.d/system restart
 
           exit 0
           EOF
-          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-system-tweaks
-
-          # 2. АВТОМАТИЧЕСКИЙ ЗАПУСК ТВОЕЙ КОМАНДЫ СЕД ПРИ ЗАГРУЗКЕ РОУТЕРА
-          # Создаем сервис позднего старта (START=99), который выполнит команду sed,
-          # когда файлы APK уже гарантированно созданы системой и лежат на диске.
-          mkdir -p openwrt/package/base-files/image-config/files/etc/init.d
-          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/init.d/99-apk-fix
-          #!/bin/sh /etc/rc.common
-          START=99
-          boot() {
-              if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
-                  sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
-              fi
-          }
-          EOF
-          chmod +x openwrt/package/base-files/image-config/files/etc/init.d/99-apk-fix
-          
+          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/00-initial-setup
+        
       - name: Download source packages
         working-directory: openwrt
         run: make download -j8
