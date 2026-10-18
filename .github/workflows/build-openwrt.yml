@@ -63,9 +63,24 @@ jobs:
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # ИСПРАВЛЕНИЕ APK UPDATE: Нативный хук сборщика образов (работает в самом конце)
-          cd openwrt
-          echo "CONFIG_TARGET_IMAGES_GZ_CUSTOM_SCRIPT=\"sed -i '/\/modem/d' \\\$(IMAGE_ROOTFS)/etc/apk/repositories.d/distfeeds.list\"" >> .config
+          # АВТОНАСТРОЙКА ПРИ ПЕРВОЙ ЗАГРУЗКЕ (ЯЗЫК И ИСПРАВЛЕНИЕ APK)
+          mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
+          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
+          #!/bin/sh
+          
+          # Включаем русский язык для LuCI по умолчанию
+          uci set luci.main.lang='ru'
+          uci commit luci
+
+          # Принудительно вырезаем неликвидный фид из ВСЕХ файлов в папке repositories.d
+          if [ -d /etc/apk/repositories.d ]; then
+              sed -i '/\/modem/d' /etc/apk/repositories.d/* 2>/dev/null
+              rm -f /etc/apk/repositories.d/modem.list 2>/dev/null
+          fi
+
+          exit 0
+          EOF
+          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
         
       - name: Download source packages
         working-directory: openwrt
