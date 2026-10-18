@@ -63,18 +63,7 @@ jobs:
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # 1. ЛОКАЛИЗАЦИЯ: Оставляем проверенный рабочий вызов русского языка
-          mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
-          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
-          #!/bin/sh
-          uci set luci.main.lang='ru'
-          uci commit luci
-          exit 0
-          EOF
-          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
-
-          # 2. ИСПРАВЛЕНИЕ APK UPDATE: Хук сборщика образов
-          # Вырезает строку /modem из RootFS прямо в процессе упаковки squashfs, до генерации финального sysupgrade
+          # ИСПРАВЛЕНИЕ APK UPDATE: Нативный хук сборщика образов (работает в самом конце)
           cd openwrt
           echo "CONFIG_TARGET_IMAGES_GZ_CUSTOM_SCRIPT=\"sed -i '/\/modem/d' \\\$(IMAGE_ROOTFS)/etc/apk/repositories.d/distfeeds.list\"" >> .config
         
