@@ -57,36 +57,26 @@ jobs:
           # Запускаем штатное обновление индексов OpenWrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          
       - name: Apply VT-STREET-M2 board port
         run: |
           chmod +x scripts/apply-port.sh scripts/collect-and-validate.sh
           ./scripts/apply-port.sh "$GITHUB_WORKSPACE/openwrt"
 
-          # СОЗДАНИЕ СКРИПТА ПЕРВООЧЕРЕДНОЙ НАСТРОЙКИ (ВЫПОЛНЯЕТСЯ ПЕРВЫМ ИЗ ВСЕХ)
+          # 1. ЛОКАЛИЗАЦИЯ: Оставляем проверенный рабочий вызов русского языка
           mkdir -p openwrt/package/base-files/image-config/files/etc/uci-defaults
-          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/00-initial-setup
+          cat << 'EOF' > openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
           #!/bin/sh
-          
-          # 1. ЛОКАЛИЗАЦИЯ: Включаем русский язык для LuCI по умолчанию
           uci set luci.main.lang='ru'
           uci commit luci
-          
-          # 2. ЧАСОВОЙ ПОЯС: Установка московского времени (MSK)
-          uci set system.@system[0].zonename='Europe/Moscow'
-          uci set system.@system[0].timezone='MSK-3'
-          uci commit system
-          
-          # 3. ИСПРАВЛЕНИЕ APK UPDATE: Вырезаем битый фид /modem до того, как его прочитает пакетный менеджер
-          if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
-              sed -i '/\/modem/d' /etc/apk/repositories.d/distfeeds.list
-          fi
-
-          # Принудительный перезапуск системных сервисов для мгновенного перевода часов
-          /etc/init.d/system restart
-
           exit 0
           EOF
-          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/00-initial-setup
+          chmod +x openwrt/package/base-files/image-config/files/etc/uci-defaults/98-language-tweak
+
+          # 2. ИСПРАВЛЕНИЕ APK UPDATE: Хук сборщика образов
+          # Вырезает строку /modem из RootFS прямо в процессе упаковки squashfs, до генерации финального sysupgrade
+          cd openwrt
+          echo "CONFIG_TARGET_IMAGES_GZ_CUSTOM_SCRIPT=\"sed -i '/\/modem/d' \\\$(IMAGE_ROOTFS)/etc/apk/repositories.d/distfeeds.list\"" >> .config
         
       - name: Download source packages
         working-directory: openwrt
